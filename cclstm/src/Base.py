@@ -2,8 +2,14 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import os
 
-# process data set
+# Define a directory to save checkpoints
+checkpoint_dir = 'checkpoints'
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+# Define the frequency of saving checkpoints (e.g., every 10 epochs)
+checkpoint_frequency = 10
 
 class LSTMModel(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size):# this function is used to initialize the model
@@ -16,6 +22,9 @@ class LSTMModel(nn.Module):
         out = self.fc(out[:, -1, :])  # Get the last time step's output
         return out # return the output
 
+# ui to determine which dataset to use and whether to load a checkpoint as well as the checkpoint path
+
+# process data set
 input_size = ...     # Define the number of input features
 hidden_size = ...    # Define the number of hidden units
 num_layers = ...     # Define the number of LSTM layers
@@ -37,6 +46,16 @@ for epoch in range(num_epochs): # Loop over the epochs
     loss.backward() # Backward pass
     optimizer.step() # Update the weights
 
+    if (epoch + 1) % checkpoint_frequency == 0:
+        # Save checkpoint
+        checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch + 1}.pth')
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': loss,
+        }, checkpoint_path)
+
     if (epoch + 1) % 10 == 0: # Print training loss every 10 epochs
         print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}') # Print the loss
 
@@ -45,8 +64,3 @@ with torch.no_grad(): # Turn off gradients
     test_outputs = model(X_test) # Forward pass
     test_loss = criterion(test_outputs, y_test) # Compute the loss
     print(f'Test Loss: {test_loss.item():.4f}') # Print the loss
-
-model.eval() # Set the model to evaluation mode
-future_data = ...  # Prepare future data for prediction
-with torch.no_grad(): # Turn off gradients
-    future_predictions = model(future_data) # Forward pass
