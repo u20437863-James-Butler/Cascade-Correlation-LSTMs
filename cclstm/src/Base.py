@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 # Define a directory to save checkpoints
-checkpoint_dir = 'checkpoints'
+checkpoint_dir = 'checkpoints_base'
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 # Define the frequency of saving checkpoints (e.g., every 10 epochs)
@@ -25,6 +25,12 @@ class LSTMModel(nn.Module):
 # ui to determine which dataset to use and whether to load a checkpoint as well as the checkpoint path
 
 # process data set
+training_data = ... # Load the training data
+test_data = ... # Load the test data
+
+train_dataloader = DataLoader(training_data, batch_size=64)
+test_dataloader = DataLoader(test_data, batch_size=64)
+
 input_size = ...     # Define the number of input features
 hidden_size = ...    # Define the number of hidden units
 num_layers = ...     # Define the number of LSTM layers
