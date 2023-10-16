@@ -1,1 +1,2 @@
-print(out)
+
+    # Scale back to the original range

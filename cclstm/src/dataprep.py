@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import os
 import json
+import joblib
 
 def label_encoding_multiple_columns(df, column_names):
     encoding_maps = {}  # Dictionary to store mappings for each column
@@ -19,9 +20,8 @@ def label_encoding_multiple_columns(df, column_names):
         encoding_maps[column_name] = label_to_code
     return df, encoding_maps
 
-def scale_columns_to_range(df, columns_to_scale, feature_range=(0, 1)):
+def scale_columns_to_range(df, columns_to_scale, dfn, feature_range=(0, 1)):
     # Create a dictionary to store the min-max scaling parameters for each column
-    scaling_parameters = {}
     for column_name in columns_to_scale:
         # Extract the column you want to scale
         data = df[column_name].values.reshape(-1, 1)  # Reshape to a 2D array
@@ -29,12 +29,12 @@ def scale_columns_to_range(df, columns_to_scale, feature_range=(0, 1)):
         scaler = MinMaxScaler(feature_range=feature_range)
         # Fit and transform the data using the scaler
         scaled_data = scaler.fit_transform(data)
-        # Store the min and max values used for scaling as a tuple
-        scaling_parameters[column_name] = (scaler.data_min_[0], scaler.data_max_[0])
         # Replace the original column in the DataFrame with the scaled data
         df[column_name] = scaled_data.flatten()  # Flatten the scaled data
+        # Store the min-max scaling parameters for the column
+        joblib.dump(scaler, column_name + '_' + dfn + '_scaler.pkl')
     # Return the scaled DataFrame and the dictionary of min-max scaling parameters
-    return df, scaling_parameters
+    return df
 
 def read_csv_with_relative_path(file_name):
     script_directory = os.path.dirname(__file__)  # Get the directory of your script
@@ -97,9 +97,9 @@ with open('nyse_encoding_maps.json', 'w') as fp:
 covid_data = covid_data.astype('float64')
 
 # Scale data
-nyse_data, nyse_scalers = scale_columns_to_range(nyse_data, nyse_data.columns)
-covid_data, covid_scalers = scale_columns_to_range(covid_data, covid_data.columns)
-wind_data, wind_scalers = scale_columns_to_range(wind_data, wind_data.columns)
+nyse_data = scale_columns_to_range(nyse_data, nyse_data.columns, dfn='nyse')
+covid_data = scale_columns_to_range(covid_data, covid_data.columns, dfn='covid')
+wind_data = scale_columns_to_range(wind_data, wind_data.columns, dfn='wind')
 
 # If data exists, delete it
 if os.path.exists('nyse_data_fixed.csv'):
@@ -112,19 +112,3 @@ if os.path.exists('wind_data_fixed.csv'):
 nyse_data.to_csv('nyse_data_fixed.csv', index=False)
 covid_data.to_csv('covid_data_fixed.csv', index=False)
 wind_data.to_csv('wind_data_fixed.csv', index=False)
-
-# if the scaler files exist, delete them
-if os.path.exists('nyse_scalers.json'):
-    os.remove('nyse_scalers.json')
-if os.path.exists('covid_scalers.json'):
-    os.remove('covid_scalers.json')
-if os.path.exists('wind_scalers.json'):
-    os.remove('wind_scalers.json')
-
-# Save the scaling parameters to disk in json format
-with open('nyse_scalers.json', 'w') as fp:
-    json.dump(nyse_scalers, fp)
-with open('covid_scalers.json', 'w') as fp:
-    json.dump(covid_scalers, fp)
-with open('wind_scalers.json', 'w') as fp:
-    json.dump(wind_scalers, fp)
