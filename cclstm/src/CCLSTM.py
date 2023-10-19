@@ -8,8 +8,6 @@ import time
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.preprocessing import MinMaxScaler
-import json
 import joblib
 
 if torch.cuda.is_available():
@@ -27,37 +25,36 @@ def read_pkl_with_relative_path(file_name):
     return joblib.load(file_path)
 
 class CCModel(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, output_size):
         super(CCModel, self).__init__()
         # LSTM layers
-        self.lstm_layers = []
-        self.lstm_layers.append(nn.LSTMCell(input_size, hidden_size, batch_first=True))
-        self.tot_size = hidden_size
-        self.lstm_layers = nn.ModuleList(self.lstm_layers)
+        self.lstm_layers = nn.ModuleList([nn.LSTM(input_size, 1, 1, batch_first=True)])
+        self.tot_size = input_size + 1
         # Output layer
         self.output_layer = nn.Linear(self.tot_size, output_size)
 
     def forward(self, x): # x is pytorch tensor
-        print(x)
-        out = []
-        out = out + x.tolist()
-        # For each layer, add all outputs to the output list
-        # which is passed as the input into the next layer
+        lstm_outputs = x.clone()
         for lstm_layer in self.lstm_layers:
-            x, _ = lstm_layer(torch.tensor(out, dtype=torch.float32))
-            out.append(x.tolist())
+            x, _ = lstm_layer(lstm_outputs)
+            lstm_outputs = torch.cat((lstm_outputs, x), dim=2)
         # Use only the last timestep's output
-        x = self.output_layer(torch.tensor(out, dtype=torch.float32)[:, -1, :])
+        x = self.output_layer(lstm_outputs[:, -1, :])
         return x
     
     def add_layer(self):
-        self.lstm_layers.append(nn.LSTMCell(self.prev_size, 1, batch_first=True))
-        self.tot_size = self.tot_size + 1
-        # Rebuild linear layer
-        linear_layer = nn.Linear(self.tot_size, 1)
-        linear_layer.weight.data[:-1] = self.output_layer.weight.data
-        linear_layer.bias.data[:-1] = self.output_layer.bias.data
+        self.tot_size = self.lstm_layers[-1].input_size + 1
+        self.lstm_layers.append(nn.LSTM(self.tot_size, 1, 1, batch_first=True))
+        self.lstm_layers[-1].flatten_parameters()
+        # Rebuild linear layer with the updated tot_size
+        linear_layer = nn.Linear(self.tot_size + 1, 1)
+        # Initialize weights and bias for the new features
+        new_weights = self.output_layer.weight.data.new_zeros((1, 1))
+        # Concatenate the existing weights and bias with the new ones
+        linear_layer.weight.data = torch.cat((self.output_layer.weight.data, new_weights), dim=1)
+        linear_layer.bias.data = self.output_layer.bias.data.clone()
         self.output_layer = linear_layer
+
 
 # Define a directory to save checkpoints
 checkpoint_dir = 'checkpoints_new'
@@ -69,40 +66,46 @@ checkpoint_frequency = 20
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
 if datatype == "covid":
     input_size = 36
-    hidden_size = 10
+    # hidden_size = 10
     num_layers = 8
     learning_rate = 0.01
-    num_epochs = 100
+    num_epochs = 10
     target = 'new_deaths_per_million'
-    loss_threshold = 0.001
-    num_epochs_tot = 1000
+    # loss_threshold = 0.001
+    num_epochs_tot = 100
     batch_size = 32
     # Load scaler from json file
     scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
+    patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
+    big_patience_limit = 10
 elif datatype == "nyse":
     input_size = 6
-    hidden_size = 10
+    # hidden_size = 10
     num_layers = 10
     learning_rate = 0.01
-    num_epochs = 100
+    num_epochs = 10
     target = 'close'
-    loss_threshold = 0.001
-    num_epochs_tot = 1000
+    # loss_threshold = 0.001
+    num_epochs_tot = 100
     batch_size = 32
     # Load scaler from json file
     scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
+    patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
+    big_patience_limit = 10
 elif datatype == "wind":
     input_size = 2
-    hidden_size = 10
+    # hidden_size = 10
     num_layers = 5
-    learning_rate = 0.01
-    num_epochs = 100
+    learning_rate = 0.001
+    num_epochs = 15
     target = 'Turbine174_Speed'
-    loss_threshold = 0.001
-    num_epochs_tot = 1000
-    batch_size = 2
+    # loss_threshold = 0.001
+    num_epochs_tot = 50
+    batch_size = 32
     # Load scaler from json file
     scaler = read_pkl_with_relative_path('../data/Turbine174_Speed_wind_scaler.pkl')
+    patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
+    big_patience_limit = 10
 
 # Load your dataset (replace 'datatype' with the appropriate dataset type)
 dataset = read_csv_with_relative_path('../data/'+datatype+'_data_fixed.csv')
@@ -128,46 +131,73 @@ train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_s
 val_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(TensorDataset(x_test_tensor, y_test_tensor), batch_size=batch_size, shuffle=False)
 
+print("Build model...")
 # Define your LSTMModel, criterion, and optimizer as before
-model = CCModel(input_size, hidden_size, 1)
+model = CCModel(input_size, 1)
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # Check for an existing checkpoint file
-checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint'+datatype+'.pth')
-if os.path.exists(checkpoint_path):
-    # Load checkpoint weights and optimizer state
-    checkpoint = torch.load(checkpoint_path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    epoch = checkpoint['epoch']
-    loss = checkpoint['loss']
-    print(f"Loaded checkpoint from epoch {epoch} with loss {loss:.4f}")
+# Get last checkpoint file
+# checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
+# if os.path.exists(checkpoint_path):
+#     # Load checkpoint weights and optimizer state
+#     checkpoint = torch.load(checkpoint_path)
+#     model.load_state_dict(checkpoint['model_state_dict'])
+#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+#     epoch = checkpoint['epoch']
+#     loss = checkpoint['loss']
+#     print(f"Loaded checkpoint from epoch {epoch} with loss {loss:.4f}")
 
-model.to(device)
 # Training loop
+model.to(device)
 print("Starting training loop...")
 print('Current time: ', time.strftime("%H:%M:%S", time.localtime()))
 start_time = time.time()
-last_validation_loss = float('inf')
 log_frequency = 1
-patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
-patience_counter = 0  # Counter to keep track of the number of epochs without improvement
-# train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
-for epoch in range(num_epochs):
-    optimizer.zero_grad()  # Reset the optimizer gradients
-    model.train()  # Set the model to training mode
-    for input_sequence, target_sequence in train_loader:
-        input_sequence = input_sequence.to(device)
-        target_sequence = target_sequence.to(device)
-        outputs = model(input_sequence)  # Forward pass
-        # y_train_tensor = y_train_tensor.view(-1,1)
-        loss = criterion(outputs, target_sequence.view(-1,1))  # Compute the Loss
-        loss.backward()  # Backward pass
-        optimizer.step()  # Update the weights
-        input_sequence = input_sequence.to('cpu')
-        target_sequence = target_sequence.to('cpu')
-    # Validation loop
+last_validation_loss = float('inf')
+last_validation_loss_big = float('inf')
+big_patience = 0
+for i in range(num_epochs_tot):
+    print('Current epoch: ', i)
+    patience_counter = 0  # Counter to keep track of the number of epochs without improvement
+    # train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+    for epoch in range(num_epochs):
+        optimizer.zero_grad()  # Reset the optimizer gradients
+        model.train()  # Set the model to training mode
+        for input_sequence, target_sequence in train_loader:
+            input_sequence = input_sequence.to(device)
+            target_sequence = target_sequence.to(device)
+            outputs = model(input_sequence)  # Forward pass
+            # y_train_tensor = y_train_tensor.view(-1,1)
+            loss = criterion(outputs, target_sequence.view(-1,1))  # Compute the Loss
+            loss.backward()  # Backward pass
+            optimizer.step()  # Update the weights
+            input_sequence = input_sequence.to('cpu')
+            target_sequence = target_sequence.to('cpu')
+        # Validation loop
+        model.eval()  # Set the model to evaluation mode
+        with torch.no_grad():  # Disable gradient computation
+            x_val_tensor = x_val_tensor.to(device)
+            y_val_tensor = y_val_tensor.to(device)
+            # Forward pass with the input sequence
+            outputs = model(x_val_tensor)
+            # Compute the loss using the target sequence
+            validation_loss = criterion(outputs, y_val_tensor.view(-1,1))
+            x_val_tensor = x_val_tensor.to('cpu')
+            y_val_tensor = y_val_tensor.to('cpu')
+        if (epoch + 1) % log_frequency == 0:
+            print(f'Epoch [{i}/{num_epochs_tot}] Sub-epoch[{epoch}/{num_epochs}], Training Loss: {loss.item():.4f}, Validation Loss: {validation_loss:.4f}')
+        # Early stopping
+        if validation_loss < last_validation_loss:
+            last_validation_loss = validation_loss
+            patience_counter = 0  # Reset counter if validation loss improves
+        else:
+            patience_counter += 1
+        if patience_counter >= patience:
+            print("Early stopping due to lack of improvement in validation loss on subepoch.")
+            break
+    # Validation loop for main epoch
     model.eval()  # Set the model to evaluation mode
     with torch.no_grad():  # Disable gradient computation
         x_val_tensor = x_val_tensor.to(device)
@@ -178,33 +208,33 @@ for epoch in range(num_epochs):
         validation_loss = criterion(outputs, y_val_tensor.view(-1,1))
         x_val_tensor = x_val_tensor.to('cpu')
         y_val_tensor = y_val_tensor.to('cpu')
-    if validation_loss < last_validation_loss:
-        last_validation_loss = validation_loss
-        patience_counter = 0  # Reset counter if validation loss improves
+    # Early stopping
+    if validation_loss < last_validation_loss_big:
+        last_validation_loss_big = validation_loss
+        big_patience = 0  # Reset counter if validation loss improves
     else:
-        patience_counter += 1
-    if patience_counter >= patience:
+        big_patience += 1
+    if big_patience >= big_patience_limit:
         print("Early stopping due to lack of improvement in validation loss.")
-        break
-    if loss.item() < loss_threshold:
-        print("Loss threshold reached. Stopping training.")
         break
     if (epoch + 1) % checkpoint_frequency == 0:
         # Save checkpoint
-        checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch + 1}.pth')
+        checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
         }, checkpoint_path)
-    if (epoch + 1) % log_frequency == 0:
-        print(f'Epoch [{epoch+1}/{num_epochs}], Training Loss: {loss.item():.4f}, Validation Loss: {validation_loss:.4f}')
+    if epoch != num_epochs_tot - 1:
+        model.add_layer()
+        model.to(device)
 
 end_time = time.time()
 print(f"Training time: {end_time - start_time:.4f} seconds")
 
 # Test loop
+start_time = time.time()
 model.eval()  # Set the model to evaluation mode
 test_loss_sum = 0.0  # Initialize the sum of test losses
 predictions, actuals = [], []
@@ -229,3 +259,4 @@ print(f'Root Mean Square Error (RMSE): {rmse:.4f}')
 print(f'Mean Absolute Error (MAE): {mae:.4f}')
 print(f'Mean Squared Error (MSE): {mse:.4f}')
 print(f'R-squared (R2 Score): {r2:.4f}')
+print(f'Test time: {time.time() - start_time:.4f} seconds')
