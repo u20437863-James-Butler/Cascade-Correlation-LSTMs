@@ -50,26 +50,26 @@ checkpoint_frequency = 10
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
 if datatype == "covid":
     input_size = 36
-    hidden_size = 10
-    num_layers = 8
-    learning_rate = 0.01
-    num_epochs = 100
+    hidden_size = 8
+    num_layers = 4
+    learning_rate = 0.001
+    num_epochs = 50
     target = 'new_deaths_per_million'
     # loss_threshold = 0.001
-    num_epochs_tot = 1000
-    batch_size = 32
+    num_epochs_tot = 100
+    batch_size = 64
     # Load scaler from json file
     scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
 elif datatype == "nyse":
     input_size = 6
-    hidden_size = 10
-    num_layers = 10
-    learning_rate = 0.01
-    num_epochs = 100
+    hidden_size = 8
+    num_layers = 3
+    learning_rate = 0.001
+    num_epochs = 50
     target = 'close'
     # loss_threshold = 0.001
-    num_epochs_tot = 1000
-    batch_size = 32
+    num_epochs_tot = 100
+    batch_size = 64
     # Load scaler from json file
     scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
 elif datatype == "wind":
@@ -77,7 +77,7 @@ elif datatype == "wind":
     hidden_size = 10
     num_layers = 5
     learning_rate = 0.001
-    num_epochs = 100
+    num_epochs = 50
     target = 'Turbine174_Speed'
     # loss_threshold = 0.001
     num_epochs_tot = 100
@@ -115,15 +115,15 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # Check for an existing checkpoint file
-checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
-if os.path.exists(checkpoint_path):
-    # Load checkpoint weights and optimizer state
-    checkpoint = torch.load(checkpoint_path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    epoch = checkpoint['epoch']
-    loss = checkpoint['loss']
-    print(f"Loaded checkpoint from epoch {epoch} with loss {loss:.4f}")
+# checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
+# if os.path.exists(checkpoint_path):
+#     # Load checkpoint weights and optimizer state
+#     checkpoint = torch.load(checkpoint_path)
+#     model.load_state_dict(checkpoint['model_state_dict'])
+#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+#     epoch = checkpoint['epoch']
+#     loss = checkpoint['loss']
+#     print(f"Loaded checkpoint from epoch {epoch} with loss {loss:.4f}")
 
 model.to(device)
 # Training loop
@@ -132,9 +132,10 @@ print('Current time: ', time.strftime("%H:%M:%S", time.localtime()))
 start_time = time.time()
 last_validation_loss = float('inf')
 log_frequency = 1
-patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
+patience = 10  # Number of epochs to wait before stopping training if validation loss doesn't improve
 patience_counter = 0  # Counter to keep track of the number of epochs without improvement
-# train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+chpt_counter = 0
+chpt_dict = {}
 for epoch in range(num_epochs):
     optimizer.zero_grad()  # Reset the optimizer gradients
     model.train()  # Set the model to training mode
@@ -164,12 +165,15 @@ for epoch in range(num_epochs):
         patience_counter = 0  # Reset counter if validation loss improves
     else:
         patience_counter += 1
+    # Store last 5 checkpoints, in case of overfitting
+    chpt_dict[chpt_counter % patience] = {'chkpt': model.state_dict(), 'vloss': validation_loss.item()}
+    chpt_counter += 1
     if patience_counter >= patience:
         print("Early stopping due to lack of improvement in validation loss.")
+        # Restore from best checkpoint in dict based on vloss
+        best_chpt = chpt_dict[min(chpt_dict, key=lambda x: chpt_dict[x]['vloss'])]['chkpt']
+        model.load_state_dict(best_chpt)
         break
-    # if loss.item() < loss_threshold:
-    #     print("Loss threshold reached. Stopping training.")
-    #     break
     if (epoch + 1) % checkpoint_frequency == 0:
         # Save checkpoint
         checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
@@ -180,7 +184,7 @@ for epoch in range(num_epochs):
             'loss': loss,
         }, checkpoint_path)
     if (epoch + 1) % log_frequency == 0:
-        print(f'Epoch [{epoch}/{num_epochs}], Training Loss: {loss.item():.4f}, Validation Loss: {validation_loss:.4f}')
+        print(f'Epoch [{epoch}/{num_epochs}], Training Loss: {loss.item():.8f}, Validation Loss: {validation_loss:.8f}')
 
 end_time = time.time()
 print(f"Training time: {end_time - start_time:.4f} seconds")
@@ -207,9 +211,9 @@ with torch.no_grad():
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test_np, test_predictions_np)
 # Calculate RMSE, MAE, MSE, R-squared
-print(f'Root Mean Square Error (RMSE): {rmse:.4f}')
-print(f'Mean Absolute Error (MAE): {mae:.4f}')
-print(f'Mean Squared Error (MSE): {mse:.4f}')
-print(f'R-squared (R2 Score): {r2:.4f}')
-print(f'Test time: {time.time() - start_time:.4f} seconds')
+print(f'Root Mean Square Error (RMSE): {rmse:.8f}')
+print(f'Mean Absolute Error (MAE): {mae:.8f}')
+print(f'Mean Squared Error (MSE): {mse:.8f}')
+print(f'R-squared (R2 Score): {r2:.8f}')
+print(f'Test time: {time.time() - start_time:.8f} seconds')
 
