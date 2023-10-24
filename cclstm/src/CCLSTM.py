@@ -62,11 +62,11 @@ class CCModel(nn.Module):
         print(f'Added layer. New neuron count: {self.tot_size - self.input_size + 1}')
 
 
-# Define a directory to save checkpoints
-checkpoint_dir = 'checkpoints_new'
-os.makedirs(checkpoint_dir, exist_ok=True)
-# Define the frequency of saving checkpoints (e.g., every 10 epochs)
-checkpoint_frequency = 20
+# # Define a directory to save checkpoints
+# checkpoint_dir = 'checkpoints_new'
+# os.makedirs(checkpoint_dir, exist_ok=True)
+# # Define the frequency of saving checkpoints (e.g., every 10 epochs)
+# checkpoint_frequency = 20
 
 # Choose which dataset to use (covid, stock, or wind)
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
@@ -249,15 +249,15 @@ for i in range(num_epochs_tot):
         break
     previous_loss = loss.item()
     previos_vloss = validation_loss
-    if (epoch + 1) % checkpoint_frequency == 0:
-        # Save checkpoint
-        checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'loss': loss,
-        }, checkpoint_path)
+    # if (epoch + 1) % checkpoint_frequency == 0:
+    #     # Save checkpoint
+    #     checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_{datatype}.pth')
+    #     torch.save({
+    #         'epoch': epoch,
+    #         'model_state_dict': model.state_dict(),
+    #         'optimizer_state_dict': optimizer.state_dict(),
+    #         'loss': loss,
+    #     }, checkpoint_path)
     if epoch != num_epochs_tot - 1:
         model.add_layer()
         model.to(device)

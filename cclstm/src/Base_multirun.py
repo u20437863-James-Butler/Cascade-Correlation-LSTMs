@@ -41,30 +41,30 @@ class LSTMModel(nn.Module):
 def network(datatype, num_runs):
     if datatype == "covid":
         input_size = 36
-        hidden_size = 8
+        hidden_size = 32
         num_layers = 4
-        learning_rate = 0.001
-        num_epochs = 50
+        learning_rate = 0.0001
+        num_epochs = 150
         target = 'new_deaths_per_million'
-        batch_size = 64
+        batch_size = 512
         scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
     elif datatype == "nyse":
         input_size = 6
-        hidden_size = 8
-        num_layers = 3
-        learning_rate = 0.001
-        num_epochs = 50
+        hidden_size = 64
+        num_layers = 1
+        learning_rate = 0.00001
+        num_epochs = 150
         target = 'close'
-        batch_size = 64
+        batch_size = 512
         scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
     elif datatype == "wind":
         input_size = 2
-        hidden_size = 10
-        num_layers = 5
-        learning_rate = 0.001
+        hidden_size = 8
+        num_layers = 1
+        learning_rate = 0.007993763701282531
         num_epochs = 50
         target = 'Turbine174_Speed'
-        batch_size = 32
+        batch_size = 256
         scaler = read_pkl_with_relative_path('../data/Turbine174_Speed_wind_scaler.pkl')
 
     dataset = read_csv_with_relative_path('../data/'+datatype+'_data_fixed.csv')

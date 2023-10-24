@@ -50,39 +50,30 @@ checkpoint_frequency = 10
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
 if datatype == "covid":
     input_size = 36
-    hidden_size = 8
+    hidden_size = 32
     num_layers = 4
-    learning_rate = 0.001
-    num_epochs = 50
+    learning_rate = 0.0001
+    num_epochs = 150
     target = 'new_deaths_per_million'
-    # loss_threshold = 0.001
-    num_epochs_tot = 100
-    batch_size = 64
-    # Load scaler from json file
+    batch_size = 512
     scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
 elif datatype == "nyse":
     input_size = 6
-    hidden_size = 8
-    num_layers = 3
-    learning_rate = 0.001
-    num_epochs = 50
+    hidden_size = 64
+    num_layers = 1
+    learning_rate = 0.00001
+    num_epochs = 150
     target = 'close'
-    # loss_threshold = 0.001
-    num_epochs_tot = 100
-    batch_size = 64
-    # Load scaler from json file
+    batch_size = 512
     scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
 elif datatype == "wind":
     input_size = 2
-    hidden_size = 10
-    num_layers = 5
-    learning_rate = 0.001
+    hidden_size = 8
+    num_layers = 1
+    learning_rate = 0.007993763701282531
     num_epochs = 50
     target = 'Turbine174_Speed'
-    # loss_threshold = 0.001
-    num_epochs_tot = 100
-    batch_size = 32
-    # Load scaler from json file
+    batch_size = 256
     scaler = read_pkl_with_relative_path('../data/Turbine174_Speed_wind_scaler.pkl')
 
 # Load your dataset (replace 'datatype' with the appropriate dataset type)

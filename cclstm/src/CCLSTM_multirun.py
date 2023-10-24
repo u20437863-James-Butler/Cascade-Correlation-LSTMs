@@ -55,31 +55,31 @@ class CCModel(nn.Module):
 def network(datatype, numruns):
     if datatype == "covid":
         input_size = 36
-        learning_rate = 0.00001
-        num_epochs = 10
+        learning_rate = 0.0006693525086249418
+        num_epochs = 5
         target = 'new_deaths_per_million'
-        num_epochs_tot = 50
-        batch_size = 32
+        num_epochs_tot = 40
+        batch_size = 1024
         scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
         patience = 5
         big_patience_limit = 5
     elif datatype == "nyse":
         input_size = 6
-        learning_rate = 0.00001
+        learning_rate = 0.005850627948031164
         num_epochs = 10
         target = 'close'
-        num_epochs_tot = 50
+        num_epochs_tot = 60
         batch_size = 32
         scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
         patience = 5
         big_patience_limit = 5
     elif datatype == "wind":
         input_size = 2
-        learning_rate = 0.001
-        num_epochs = 15
+        learning_rate = 0.0069111454795854005
+        num_epochs = 40
         target = 'Turbine174_Speed'
-        num_epochs_tot = 50
-        batch_size = 32
+        num_epochs_tot = 30
+        batch_size = 128
         scaler = read_pkl_with_relative_path('../data/Turbine174_Speed_wind_scaler.pkl')
         patience = 5
         big_patience_limit = 5
