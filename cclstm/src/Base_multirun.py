@@ -46,7 +46,6 @@ def network(datatype, num_runs):
         learning_rate = 0.001
         num_epochs = 50
         target = 'new_deaths_per_million'
-        num_epochs_tot = 100
         batch_size = 64
         scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
     elif datatype == "nyse":
@@ -56,7 +55,6 @@ def network(datatype, num_runs):
         learning_rate = 0.001
         num_epochs = 50
         target = 'close'
-        num_epochs_tot = 100
         batch_size = 64
         scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
     elif datatype == "wind":
@@ -66,7 +64,6 @@ def network(datatype, num_runs):
         learning_rate = 0.001
         num_epochs = 50
         target = 'Turbine174_Speed'
-        num_epochs_tot = 100
         batch_size = 32
         scaler = read_pkl_with_relative_path('../data/Turbine174_Speed_wind_scaler.pkl')
 
@@ -86,8 +83,6 @@ def network(datatype, num_runs):
     x_test_tensor = x_test_tensor.view(-1,1,input_size)
     y_test_tensor = y_test_tensor.view(-1,1)
     train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=batch_size, shuffle=False)
-    val_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(TensorDataset(x_test_tensor, y_test_tensor), batch_size=batch_size, shuffle=False)
 
     directory = 'results'
     base_csv = os.path.join(directory, 'base_results.csv')
@@ -164,8 +159,6 @@ def network(datatype, num_runs):
                     write.writerow(row)
             start_time = time.time()
             model.eval()
-            test_loss_sum = 0.0
-            predictions, actuals = [], []
             with torch.no_grad():
                 x_test_tensor = x_test_tensor.to(device)
                 y_test_tensor = y_test_tensor.to(device)
