@@ -68,6 +68,9 @@ covid_data = covid_data[['continent','location','date','total_cases_per_million'
 # nyse_data # All columns
 wind_data = wind_data[['Time','Turbine174_Speed','Turbine174_Power']]
 
+# Remove outliers
+
+
 # Handle missing values
 nyse_data = nyse_data.ffill()  # Forward fill missing values
 covid_data = covid_data.fillna(0.0)  # Interpolate missing values

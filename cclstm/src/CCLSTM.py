@@ -72,7 +72,7 @@ class CCModel(nn.Module):
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
 if datatype == "covid": #use these values for multirun maybe
     input_size = 36
-    learning_rate = 0.00001
+    learning_rate = 0.000001
     num_epochs = 10
     target = 'new_deaths_per_million'
     num_epochs_tot = 50
