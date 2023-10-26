@@ -85,7 +85,7 @@ def network(datatype, num_runs):
     train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=batch_size, shuffle=False)
 
     directory = 'results'
-    base_csv = os.path.join(directory, 'base_results.csv')
+    base_csv = os.path.join(directory, f'{datatype}_base_results.csv')
     os.makedirs(directory, exist_ok=True)
     is_new_file = not os.path.exists(base_csv) or os.path.getsize(base_csv) == 0
     with open(base_csv, 'a', newline='') as file:
@@ -95,6 +95,7 @@ def network(datatype, num_runs):
             writer.writeheader()
 
         for i in range(num_runs):
+            print(f"Run {i+1} of {num_runs}")
             run_dict = {}
             loss_dict = []
             model = LSTMModel(input_size, hidden_size, num_layers, 1)

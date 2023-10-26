@@ -48,7 +48,7 @@ wind_data = read_csv_with_relative_path('../data/wind.csv')
 
 # order data by date from oldest to newest and then by country (for covid data)
 nyse_data = nyse_data.sort_values(by=['date'])
-covid_data = covid_data.sort_values(by=['date', 'location'])
+covid_data = covid_data.sort_values(by=['location','date'])
 wind_data = wind_data.sort_values(by=['Time'])
 
 # Remove rows with continent as null or missing

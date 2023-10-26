@@ -52,24 +52,24 @@ class CCModel(nn.Module):
         self.output_layer = linear_layer
         print(f'Added layer. New neuron count: {self.tot_size - self.input_size + 1}')
 
-def network(datatype, numruns):
+def network(datatype, num_runs):
     if datatype == "covid":
         input_size = 36
-        learning_rate = 0.0006693525086249418
-        num_epochs = 5
+        learning_rate = 0.00001
+        num_epochs = 10
         target = 'new_deaths_per_million'
-        num_epochs_tot = 40
-        batch_size = 1024
+        num_epochs_tot = 50
+        batch_size = 32
         scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
         patience = 5
         big_patience_limit = 5
     elif datatype == "nyse":
         input_size = 6
-        learning_rate = 0.005850627948031164
+        learning_rate = 0.002577543276337824
         num_epochs = 10
         target = 'close'
-        num_epochs_tot = 60
-        batch_size = 32
+        num_epochs_tot = 40
+        batch_size = 1024
         scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
         patience = 5
         big_patience_limit = 5
@@ -100,11 +100,9 @@ def network(datatype, numruns):
     x_test_tensor = x_test_tensor.view(-1,1,input_size)
     y_test_tensor = y_test_tensor.view(-1,1)
     train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=batch_size, shuffle=False)
-    # val_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=batch_size, shuffle=False)
-    # test_loader = DataLoader(TensorDataset(x_test_tensor, y_test_tensor), batch_size=batch_size, shuffle=False)
 
     directory = 'results'
-    base_csv = os.path.join(directory, 'new_results.csv')
+    base_csv = os.path.join(directory, f'{datatype}_new_results.csv')
     os.makedirs(directory, exist_ok=True)
     is_new_file = not os.path.exists(base_csv) or os.path.getsize(base_csv) == 0
     with open(base_csv, 'a', newline='') as file:
@@ -114,6 +112,7 @@ def network(datatype, numruns):
             writer.writeheader()
         
         for i in range(num_runs):
+            print(f"Run {i+1} of {num_runs}")
             run_dict = {}
             loss_dict = []
             model = CCModel(input_size, 1)

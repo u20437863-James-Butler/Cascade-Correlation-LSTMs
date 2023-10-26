@@ -70,17 +70,13 @@ class CCModel(nn.Module):
 
 # Choose which dataset to use (covid, stock, or wind)
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
-if datatype == "covid":
+if datatype == "covid": #use these values for multirun maybe
     input_size = 36
-    # hidden_size = 10
-    # num_layers = 8
     learning_rate = 0.00001
     num_epochs = 10
     target = 'new_deaths_per_million'
-    # loss_threshold = 0.001
     num_epochs_tot = 50
     batch_size = 32
-    # Load scaler from json file
     scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
     patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
     big_patience_limit = 5
