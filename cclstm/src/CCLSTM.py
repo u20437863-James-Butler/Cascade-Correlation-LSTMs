@@ -45,9 +45,9 @@ class CCModel(nn.Module):
         return x
     
     def add_layer(self):
-        # for lstm_layer in self.lstm_layers:
-        #     for param in lstm_layer.parameters():
-        #         param.requires_grad = False
+        for lstm_layer in self.lstm_layers:
+            for param in lstm_layer.parameters():
+                param.requires_grad = False
         self.tot_size = self.lstm_layers[-1].input_size + 1
         self.lstm_layers.append(nn.LSTM(self.tot_size, 1, 1, batch_first=True))
         self.lstm_layers[-1].flatten_parameters()
@@ -72,27 +72,23 @@ class CCModel(nn.Module):
 datatype = input("Choose a dataset (covid, nyse, or wind): ")
 if datatype == "covid": #use these values for multirun maybe
     input_size = 36
-    learning_rate = 0.000001
-    num_epochs = 10
+    learning_rate = 0.000006693525086249418
+    num_epochs = 15
     target = 'new_deaths_per_million'
     num_epochs_tot = 50
-    batch_size = 32
+    batch_size = 1024
     scaler = read_pkl_with_relative_path('../data/new_deaths_per_million_covid_scaler.pkl')
     patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
     big_patience_limit = 5
 elif datatype == "nyse":
     input_size = 6
-    # hidden_size = 10
-    # num_layers = 10
-    learning_rate = 0.00001
+    learning_rate = 0.000002577543276337824
     num_epochs = 10
     target = 'close'
-    # loss_threshold = 0.001
-    num_epochs_tot = 50
-    batch_size = 32
-    # Load scaler from json file
+    num_epochs_tot = 40
+    batch_size = 1024
     scaler = read_pkl_with_relative_path('../data/close_nyse_scaler.pkl')
-    patience = 5  # Number of epochs to wait before stopping training if validation loss doesn't improve
+    patience = 5
     big_patience_limit = 5
 elif datatype == "wind":
     input_size = 2
